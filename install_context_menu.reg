@@ -1,0 +1,8 @@
+Windows Registry Editor Version 5.00
+
+[HKEY_CLASSES_ROOT\*\shell\CompressForNotebookLM]
+@="Comprimir para NotebookLM"
+"Icon"="shell32.dll,116"
+
+[HKEY_CLASSES_ROOT\*\shell\CompressForNotebookLM\command]
+@="cmd.exe /c python \"C:\\Users\\Teresa\\.gemini\\antigravity\\scratch\\notebooklm-compressor\\backend\\context_menu_script.py\" \"%1\""

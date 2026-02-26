@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NotebookLM Compressor</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <div class="glass-container">
+        <header>
+            <div class="icon-container">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 2v20" />
+                    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+                </svg>
+            </div>
+            <h1>NotebookLM <span>Compressor</span></h1>
+        </header>
+
+        <main>
+            <div id="drop-zone" class="drop-zone">
+                <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"
+                    class="upload-icon">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="17 8 12 3 7 8" />
+                    <line x1="12" y1="3" x2="12" y2="15" />
+                </svg>
+                <p class="drop-text">Arrastrá tu audio/video acá o</p>
+                <label for="file-input" class="browse-btn">Buscá un archivo</label>
+                <input type="file" id="file-input" accept="audio/*,video/*" hidden>
+            </div>
+
+            <div class="status-section">
+                <div class="file-info hidden" id="file-info">
+                    <span class="file-icon">📄</span>
+                    <div class="file-details">
+                        <span id="file-name" class="file-name">archivo.mp4</span>
+                        <span id="file-size" class="file-size">0 MB</span>
+                    </div>
+                </div>
+
+                <div class="progress-container hidden" id="progress-container">
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progress-fill"></div>
+                    </div>
+                    <p id="status-text" class="status-text">Comprimiendo...</p>
+                </div>
+            </div>
+
+            <div class="actions-group">
+                <button id="compress-btn" class="action-btn" disabled>Comprimir Archivo</button>
+                <div id="success-buttons" class="hidden" style="display: flex; gap: 12px; margin-top: 12px;">
+                    <button id="new-compress-btn" class="action-btn" style="flex: 1;">Comprimir Otro</button>
+                    <a href="https://notebooklm.google.com/" target="_blank" class="action-btn secondary"
+                        style="flex: 1; text-align: center; text-decoration: none;">Abrir NotebookLM</a>
+                </div>
+            </div>
+        </main>
+
+        <footer>
+            <div class="server-status">
+                <span class="status-dot tooltip" id="server-dot"><span class="tooltiptext">Comprobando
+                        conexión...</span></span>
+                <span id="server-status-text">Servidor Local</span>
+            </div>
+        </footer>
+    </div>
+    <script src="app.js"></script>
+</body>
+
+</html>
