@@ -14,7 +14,7 @@ const serverStatusText = document.getElementById('server-status-text');
 const tooltiptext = document.querySelector('.tooltiptext');
 
 const SERVER_URL = 'http://127.0.0.1:8000';
-let selectedFile = null;
+let selectedFiles = [];
 let serverOnline = false;
 
 // Format bytes
@@ -40,23 +40,31 @@ async function checkServerStatus() {
             serverDot.className = 'status-dot online tooltip';
             serverStatusText.innerText = 'Servidor Local Conectado';
             tooltiptext.innerText = 'Listo.';
-            if (selectedFile) compressBtn.disabled = false;
+            if (selectedFiles.length > 0) compressBtn.disabled = false;
         } else throw new Error();
     } catch (e) {
         serverOnline = false;
         serverDot.className = 'status-dot offline tooltip';
         serverStatusText.innerText = 'Servidor Local Desconectado';
-        tooltiptext.innerText = 'Inciar uvicorn server:app --reload en consola.';
+        tooltiptext.innerText = 'Doble clic en INICIAR_SERVIDOR_OCULTO.vbs.';
         compressBtn.disabled = true;
     }
 }
 
 // File Events
-function handleFile(file) {
-    if (!file) return;
-    selectedFile = file;
-    fileNameDisplay.innerText = file.name;
-    fileSizeDisplay.innerText = formatBytes(file.size);
+function handleFiles(files) {
+    if (!files || files.length === 0) return;
+    selectedFiles = Array.from(files);
+
+    if (selectedFiles.length === 1) {
+        fileNameDisplay.innerText = selectedFiles[0].name;
+        fileSizeDisplay.innerText = formatBytes(selectedFiles[0].size);
+    } else {
+        fileNameDisplay.innerText = `${selectedFiles.length} archivos seleccionados`;
+        const totalSize = selectedFiles.reduce((acc, file) => acc + file.size, 0);
+        fileSizeDisplay.innerText = `Peso total: ${formatBytes(totalSize)}`;
+    }
+
     fileInfo.classList.remove('hidden');
     progressContainer.classList.add('hidden');
     successButtons.classList.add('hidden');
@@ -69,90 +77,105 @@ dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.clas
 dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
 dropZone.addEventListener('drop', (e) => {
     e.preventDefault(); dropZone.classList.remove('dragover');
-    if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+    if (e.dataTransfer.files.length) handleFiles(e.dataTransfer.files);
 });
 dropZone.addEventListener('click', () => fileInput.click());
-fileInput.addEventListener('change', (e) => { if (e.target.files.length) handleFile(e.target.files[0]); });
+fileInput.addEventListener('change', (e) => { if (e.target.files.length) handleFiles(e.target.files); });
 
-// Compress Logic
+// Compress Logic (Sequential Queue)
 compressBtn.addEventListener('click', async () => {
-    if (!selectedFile) return;
+    if (selectedFiles.length === 0) return;
 
     compressBtn.disabled = true;
     dropZone.classList.add('hidden');
     progressContainer.classList.remove('hidden');
-    statusText.innerText = '0% - Transfiriendo archivo al servidor local...';
-    progressFill.classList.remove('indeterminate');
-    progressFill.style.width = '5%';
-    progressFill.style.background = 'linear-gradient(90deg, #6366f1, #ec4899)'; // reset color
 
-    const formData = new FormData();
-    formData.append('file', selectedFile);
+    // Process files one by one to avoid memory overload
+    for (let i = 0; i < selectedFiles.length; i++) {
+        const file = selectedFiles[i];
 
-    try {
-        const response = await fetch(`${SERVER_URL}/compress`, { method: 'POST', body: formData });
-        if (!response.ok) throw new Error('Error al iniciar compresión');
+        statusText.innerText = `[${i + 1}/${selectedFiles.length}] Transfiriendo ${file.name}...`;
+        progressFill.classList.remove('indeterminate');
+        progressFill.style.width = '5%';
+        progressFill.style.background = 'linear-gradient(90deg, #6366f1, #ec4899)';
 
-        const data = await response.json();
-        const jobId = data.job_id;
-        const outputFilename = data.output_filename;
+        const formData = new FormData();
+        formData.append('file', file);
 
-        // Poll for progress
-        const interval = setInterval(async () => {
-            try {
-                const res = await fetch(`${SERVER_URL}/status/${jobId}`);
-                if (!res.ok) return;
-                const statusData = await res.json();
+        try {
+            const response = await fetch(`${SERVER_URL}/compress`, { method: 'POST', body: formData });
+            if (!response.ok) throw new Error('Error al iniciar compresión');
 
-                if (statusData.status === "processing" || statusData.status === "uploading") {
-                    let progress = statusData.progress || 0;
-                    progressFill.style.width = `${Math.max(5, progress)}%`;
-                    statusText.innerText = `${progress}% - Comprimiendo (reduciendo sample rate a 16kHz)...`;
-                } else if (statusData.status === "completed") {
-                    clearInterval(interval);
-                    progressFill.style.width = '100%';
-                    progressFill.style.background = '#10b981'; // Green
-                    statusText.innerText = '100% - ¡Comprimido! Por favor elegí dónde guardar el archivo pequeño.';
+            const data = await response.json();
+            const jobId = data.job_id;
+            const outputFilename = data.output_filename;
 
-                    // Trigger native save dialog using extension downloads API
-                    chrome.downloads.download({
-                        url: `${SERVER_URL}/download/${jobId}`,
-                        filename: outputFilename,
-                        saveAs: true // Forces the "Save As" dialogue
-                    });
+            // Wait for completion using a Promise wrapper around setInterval
+            await new Promise((resolve, reject) => {
+                const interval = setInterval(async () => {
+                    try {
+                        const res = await fetch(`${SERVER_URL}/status/${jobId}`);
+                        if (!res.ok) return;
+                        const statusData = await res.json();
 
-                    // Update UI to show NotebookLM button
-                    compressBtn.classList.add('hidden');
-                    successButtons.classList.remove('hidden');
+                        if (statusData.status === "processing" || statusData.status === "uploading") {
+                            let progress = statusData.progress || 0;
+                            progressFill.style.width = `${Math.max(5, progress)}%`;
+                            statusText.innerText = `[${i + 1}/${selectedFiles.length}] ${progress}% - Comprimiendo ${file.name}...`;
+                        } else if (statusData.status === "completed") {
+                            clearInterval(interval);
 
-                } else if (statusData.status === "error") {
-                    clearInterval(interval);
-                    throw new Error(statusData.error || "Falla en FFmpeg");
-                }
-            } catch (pollErr) {
-                // Ignore temporary fetch failures during polling
-            }
-        }, 1000);
+                            // Ask user where to save it
+                            chrome.downloads.download({
+                                url: `${SERVER_URL}/download/${jobId}`,
+                                filename: outputFilename,
+                                saveAs: true
+                            });
 
-    } catch (error) {
-        progressFill.style.background = '#ef4444'; // Red
-        progressFill.style.width = '100%';
-        statusText.innerText = `Error: ${error.message}`;
-        compressBtn.disabled = false;
-        compressBtn.innerText = 'Reintentar';
+                            resolve(); // Continue to next file
+                        } else if (statusData.status === "error") {
+                            clearInterval(interval);
+                            reject(new Error(statusData.error || "Falla en FFmpeg"));
+                        }
+                    } catch (pollErr) {
+                        // Ignore temporary fetch failures
+                    }
+                }, 1000); // 1-second polling
+            });
+
+        } catch (error) {
+            progressFill.style.background = '#ef4444'; // Red
+            progressFill.style.width = '100%';
+            statusText.innerText = `Error con ${file.name}: ${error.message}`;
+            compressBtn.disabled = false;
+            compressBtn.innerText = 'Reintentar fallidos';
+            selectedFiles = selectedFiles.slice(i); // Keep only failed/remaining files for retry
+            return; // Stop the queue
+        }
     }
+
+    // All files completed
+    progressFill.style.width = '100%';
+    progressFill.style.background = '#10b981'; // Green
+    statusText.innerText = `100% - ¡${selectedFiles.length} Archivos procesados de un tirón!`;
+
+    compressBtn.classList.add('hidden');
+    successButtons.classList.remove('hidden');
 });
 
 // Reset UI
 newCompressBtn.addEventListener('click', () => {
-    selectedFile = null;
+    selectedFiles = [];
     dropZone.classList.remove('hidden');
     fileInfo.classList.add('hidden');
     progressContainer.classList.add('hidden');
     successButtons.classList.add('hidden');
     compressBtn.classList.remove('hidden');
-    compressBtn.innerText = 'Comprimir Archivo';
+    compressBtn.innerText = 'Comprimir Archivos';
     compressBtn.disabled = true;
+
+    // reset input so the same files can't cause issues if selected again
+    fileInput.value = '';
 });
 
 checkServerStatus();
