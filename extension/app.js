@@ -79,7 +79,7 @@ dropZone.addEventListener('drop', (e) => {
     e.preventDefault(); dropZone.classList.remove('dragover');
     if (e.dataTransfer.files.length) handleFiles(e.dataTransfer.files);
 });
-dropZone.addEventListener('click', () => fileInput.click());
+// Clicking the label natively triggers the input, so no need for dropZone click listener.
 fileInput.addEventListener('change', (e) => { if (e.target.files.length) handleFiles(e.target.files); });
 
 // Compress Logic (Sequential Queue)
