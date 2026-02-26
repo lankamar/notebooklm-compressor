@@ -99,9 +99,9 @@ startServerBtn.addEventListener('click', () => {
             { action: 'start_server' },
             function (response) {
                 if (chrome.runtime.lastError) {
-                    alert("⚠️ Falta instalar el Conector de Chrome para encendido directo.\n\nPor favor, andá a la carpeta 'backend' de la extensión y dale doble clic a:\n'INSTALAR_CONECTOR_CHROME.bat' (solo hace falta 1 vez en la vida).");
+                    alert("¡Excelente! 🎉 Vamos a preparar la conexión segura de Chrome por primera y única vez.\n\n1. Andá a la carpeta 'backend' de este proyecto.\n2. Dale doble clic al archivo 'INSTALAR_CONECTOR_CHROME.bat'.\n3. ¡Listo! Ya podrás encender el servidor desde aquí siempre sin consolas extras.");
                     startServerBtn.disabled = false;
-                    startServerBtn.innerText = '🚀 Encender Servidor Desde Acá';
+                    startServerBtn.innerText = '⚙️ Pre-Instalación del Conector';
                 } else {
                     // Force a faster ping to update UI
                     setTimeout(checkServerStatus, 1500);

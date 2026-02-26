@@ -1,0 +1,9 @@
+{ 
+  "name": "com.lankamar.compressor", 
+  "description": "NotebookLM Compressor Native Host", 
+  "path": "C:\\Users\\Teresa\\.gemini\\antigravity\\scratch\\notebooklm-compressor\\backend\\native_host.bat", 
+  "type": "stdio", 
+  "allowed_origins": [ 
+    "chrome-extension://cmillkglagbniikakogcpnoakijamkgi/" 
+  ] 
+} 
