@@ -5,6 +5,7 @@ const fileNameDisplay = document.getElementById('file-name');
 const fileSizeDisplay = document.getElementById('file-size');
 const compressBtn = document.getElementById('compress-btn');
 const newCompressBtn = document.getElementById('new-compress-btn');
+const startServerBtn = document.getElementById('start-server-btn');
 const successButtons = document.getElementById('success-buttons');
 const progressContainer = document.getElementById('progress-container');
 const progressFill = document.getElementById('progress-fill');
@@ -40,13 +41,19 @@ async function checkServerStatus() {
             serverDot.className = 'status-dot online tooltip';
             serverStatusText.innerText = 'Servidor Local Conectado';
             tooltiptext.innerText = 'Listo.';
+            startServerBtn.classList.add('hidden');
             if (selectedFiles.length > 0) compressBtn.disabled = false;
         } else throw new Error();
     } catch (e) {
         serverOnline = false;
         serverDot.className = 'status-dot offline tooltip';
         serverStatusText.innerText = 'Servidor Local Desconectado';
-        tooltiptext.innerText = 'Doble clic en INICIAR_SERVIDOR_OCULTO.vbs.';
+        tooltiptext.innerText = 'Clic en Encender o usa INICIAR_SERVIDOR_OCULTO.vbs';
+        startServerBtn.classList.remove('hidden');
+        if (startServerBtn.innerText === '🚀 Encendiendo...') {
+            startServerBtn.innerText = '🚀 Encender Servidor Desde Acá';
+            startServerBtn.disabled = false;
+        }
         compressBtn.disabled = true;
     }
 }
@@ -81,6 +88,30 @@ dropZone.addEventListener('drop', (e) => {
 });
 // Clicking the label natively triggers the input, so no need for dropZone click listener.
 fileInput.addEventListener('change', (e) => { if (e.target.files.length) handleFiles(e.target.files); });
+
+// Start Server Native Message Logic
+startServerBtn.addEventListener('click', () => {
+    startServerBtn.disabled = true;
+    startServerBtn.innerText = '🚀 Encendiendo...';
+    try {
+        chrome.runtime.sendNativeMessage(
+            'com.lankamar.compressor',
+            { action: 'start_server' },
+            function (response) {
+                if (chrome.runtime.lastError) {
+                    alert("⚠️ Falta instalar el Conector de Chrome para encendido directo.\n\nPor favor, andá a la carpeta 'backend' de la extensión y dale doble clic a:\n'INSTALAR_CONECTOR_CHROME.bat' (solo hace falta 1 vez en la vida).");
+                    startServerBtn.disabled = false;
+                    startServerBtn.innerText = '🚀 Encender Servidor Desde Acá';
+                } else {
+                    // Force a faster ping to update UI
+                    setTimeout(checkServerStatus, 1500);
+                }
+            }
+        );
+    } catch (err) {
+        console.error("Native Messaging Error", err);
+    }
+});
 
 // Compress Logic (Sequential Queue)
 compressBtn.addEventListener('click', async () => {

@@ -21,7 +21,8 @@
   },
   "permissions": [
     "storage",
-    "downloads"
+    "downloads",
+    "nativeMessaging"
   ],
   "host_permissions": [
     "http://127.0.0.1:8000/*",
