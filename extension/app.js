@@ -141,37 +141,40 @@ compressBtn.addEventListener('click', async () => {
             const jobId = data.job_id;
             const outputFilename = data.output_filename;
 
-            // Wait for completion using a Promise wrapper around setInterval
+            // Wait for completion using a safe recursive timeout
             await new Promise((resolve, reject) => {
-                const interval = setInterval(async () => {
+                let isDone = false;
+                const checkStatus = async () => {
+                    if (isDone) return;
                     try {
                         const res = await fetch(`${SERVER_URL}/status/${jobId}`);
-                        if (!res.ok) return;
-                        const statusData = await res.json();
-
-                        if (statusData.status === "processing" || statusData.status === "uploading") {
-                            let progress = statusData.progress || 0;
-                            progressFill.style.width = `${Math.max(5, progress)}%`;
-                            statusText.innerText = `[${i + 1}/${selectedFiles.length}] ${progress}% - Comprimiendo ${file.name}...`;
-                        } else if (statusData.status === "completed") {
-                            clearInterval(interval);
-
-                            // Ask user where to save it
-                            chrome.downloads.download({
-                                url: `${SERVER_URL}/download/${jobId}`,
-                                filename: outputFilename,
-                                saveAs: true
-                            });
-
-                            resolve(); // Continue to next file
-                        } else if (statusData.status === "error") {
-                            clearInterval(interval);
-                            reject(new Error(statusData.error || "Falla en FFmpeg"));
+                        if (res.ok) {
+                            const statusData = await res.json();
+                            if (statusData.status === "processing" || statusData.status === "uploading") {
+                                let progress = statusData.progress || 0;
+                                progressFill.style.width = `${Math.max(5, progress)}%`;
+                                statusText.innerText = `[${i + 1}/${selectedFiles.length}] ${progress}% - Comprimiendo ${file.name}...`;
+                            } else if (statusData.status === "completed") {
+                                isDone = true;
+                                chrome.downloads.download({
+                                    url: `${SERVER_URL}/download/${jobId}`,
+                                    filename: outputFilename,
+                                    saveAs: true
+                                });
+                                resolve();
+                                return;
+                            } else if (statusData.status === "error") {
+                                isDone = true;
+                                reject(new Error(statusData.error || "Falla en FFmpeg"));
+                                return;
+                            }
                         }
                     } catch (pollErr) {
                         // Ignore temporary fetch failures
                     }
-                }, 1000); // 1-second polling
+                    if (!isDone) setTimeout(checkStatus, 1000);
+                };
+                checkStatus();
             });
 
         } catch (error) {
